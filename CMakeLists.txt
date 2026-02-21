@@ -50,9 +50,8 @@ find_package(Qt6 COMPONENTS Widgets REQUIRED)
 #boost
 include_directories(${CMAKE_SOURCE_DIR}/3rdparty/boost)
 
-#curl
-include_directories(./3rdparty/libcurl-vc17-X64-release-static-zlib-static-ipv6-sspi-schannel/include)
-link_directories(./3rdparty/libcurl-vc17-X64-release-static-zlib-static-ipv6-sspi-schannel/lib)
+# curl (via vcpkg: vcpkg install curl[ssl]:x64-windows-static)
+find_package(CURL REQUIRED)
 add_definitions(-DCURL_STATICLIB)
 
 #include_directories(./3rdparty/abogus_cpp)
@@ -123,8 +122,8 @@ set(PROJECT_LIBRARIES
     Qt6::Core
     Qt6::Widgets
 
-    # curl
-    libcurl_a
+    # curl (vcpkg imported target)
+    CURL::libcurl
 
     QR_Code_generator
     WebView2LoaderStatic
@@ -176,11 +175,12 @@ set(QT_DLL_FILES
 
 install(
     FILES 
-	${CMAKE_BINARY_DIR}/${PROJECT_NAME}.pdb
+	$<TARGET_PDB_FILE:${PROJECT_NAME}>
 	${QT_DLL_FILES}
 	${FFMPEG_DLLS}
     DESTINATION 
 	${Install_Directory}
+    OPTIONAL
 )
 
 install(

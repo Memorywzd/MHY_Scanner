@@ -1,0 +1,22 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "mhy-scanner",
+  "version": "1.1.14",
+  "dependencies": [
+    {
+      "name": "curl",
+      "features": ["ssl"],
+      "platform": "windows"
+    },
+    {
+      "name": "opencv",
+      "features": ["world", "contrib"],
+      "platform": "windows"
+    },
+    {
+      "name": "openssl",
+      "platform": "windows"
+    }
+  ],
+  "builtin-baseline": "66c0373dc7fca549e5803087b9487edfe3aca0a1"
+}
