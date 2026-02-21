@@ -1,0 +1,106 @@
+name: Build
+
+on:
+  #push:
+  #  branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+env: 
+  VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}\969f6665-88a2-4c98-938e-ca9259871fec\vcpkg_cache
+  USERNAME: Memorywzd
+  FEED_URL: https://nuget.pkg.github.com/Memorywzd/index.json
+  VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/Memorywzd/index.json,readwrite"
+
+jobs:
+  build:
+    name: Build (Windows MSVC x64)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+            
+      # 接管 vcpkg 的本地二进制缓存目录
+      - name: Cache vcpkg binaries
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
+          # 缓存键绑定系统环境和 vcpkg.json，一旦修改依赖就重新缓存
+          key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
+          restore-keys: |
+            ${{ runner.os }}-vcpkg-
+
+      # ── Qt ──────────────────────────────────────────────────────────────
+      - name: Install Qt6
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.2'
+          host: 'windows'
+          target: 'desktop'
+          arch: 'win64_msvc2022_64'
+          cache: true
+
+      # ── vcpkg (manifest mode，自动读取 vcpkg.json) ───────────────────────
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+
+      - name: Add NuGet sources
+        shell: pwsh
+        run: |
+          .$(vcpkg fetch nuget)`
+            sources add `
+            -Source "${{ env.FEED_URL }}" `
+            -StorePasswordInClearText `
+            -Name GitHubPackages `
+            -UserName "${{ env.USERNAME }}" `
+            -Password "${{ secrets.VCPKG_PAT_TOKEN }}"
+          .$(vcpkg fetch nuget) `
+            setapikey "${{ secrets.VCPKG_PAT_TOKEN }}" `
+            -Source "${{ env.FEED_URL }}"
+
+      - name: Install vcpkg dependencies
+        # vcpkg.json 中声明了 curl[ssl]、opencv[world]、openssl
+        # run-vcpkg 会自动调用 vcpkg install，此步骤仅作显式日志输出
+        run: |
+          vcpkg install `
+            --triplet x64-windows-static-md `
+            --x-manifest-root=${{ github.workspace }}
+        shell: pwsh
+
+      # ── Configure ───────────────────────────────────────────────────────
+      - name: Configure CMake
+        run: |
+          cmake -B build `
+            -G "Visual Studio 17 2022" -A x64 `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_TOOLCHAIN_FILE="${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake" `
+            -DVCPKG_TARGET_TRIPLET=x64-windows-static-md `
+            -DUNIT_TESTS=OFF `
+            -DDEV=OFF
+        shell: pwsh
+
+      # ── Build ────────────────────────────────────────────────────────────
+      - name: Build
+        run: cmake --build build --config Release --parallel
+        shell: pwsh
+
+      # ── Install  ────────────────────────────────────────────
+      - name: Install
+        run: cmake --install build --config Release --prefix .
+        shell: pwsh
+
+      # ── Upload artifact  ─────────────────────────────────
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MHY_Scanner-Release.zip
+          path: install_output/
+          if-no-files-found: warn

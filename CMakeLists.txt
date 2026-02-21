@@ -50,9 +50,8 @@ find_package(Qt6 COMPONENTS Widgets REQUIRED)
 #boost
 include_directories(${CMAKE_SOURCE_DIR}/3rdparty/boost)
 
-#curl
-include_directories(./3rdparty/libcurl-vc17-X64-release-static-zlib-static-ipv6-sspi-schannel/include)
-link_directories(./3rdparty/libcurl-vc17-X64-release-static-zlib-static-ipv6-sspi-schannel/lib)
+# curl (via vcpkg: vcpkg install curl[ssl]:x64-windows-static)
+find_package(CURL REQUIRED)
 add_definitions(-DCURL_STATICLIB)
 
 #include_directories(./3rdparty/abogus_cpp)
@@ -123,8 +122,8 @@ set(PROJECT_LIBRARIES
     Qt6::Core
     Qt6::Widgets
 
-    # curl
-    libcurl_a
+    # curl (vcpkg imported target)
+    CURL::libcurl
 
     QR_Code_generator
     WebView2LoaderStatic
@@ -162,21 +161,21 @@ if(UNIT_TESTS)
 endif()
 
 # install
-set(Install_Directory "${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}_${PROJECT_VERSION}")
+set(Install_Directory "install_output")
 
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION ${Install_Directory}
 )
 
 set(QT_DLL_FILES
-    "$ENV{QTDIR}/bin/Qt6Core.dll"
-    "$ENV{QTDIR}/bin/Qt6Widgets.dll"
-    "$ENV{QTDIR}/bin/Qt6Gui.dll"
+    "${QT6_INSTALL_PREFIX}/bin/Qt6Core.dll"
+    "${QT6_INSTALL_PREFIX}/bin/Qt6Widgets.dll"
+    "${QT6_INSTALL_PREFIX}/bin/Qt6Gui.dll"
 )
 
 install(
     FILES 
-	${CMAKE_BINARY_DIR}/${PROJECT_NAME}.pdb
+	$<TARGET_PDB_FILE:${PROJECT_NAME}>
 	${QT_DLL_FILES}
 	${FFMPEG_DLLS}
     DESTINATION 
@@ -185,17 +184,17 @@ install(
 
 install(
     FILES
-    $ENV{QTDIR}/plugins/platforms/qdirect2d.dll
-    $ENV{QTDIR}/plugins/platforms/qminimal.dll
-    $ENV{QTDIR}/plugins/platforms/qoffscreen.dll
-    $ENV{QTDIR}/plugins/platforms/qwindows.dll
+    ${QT6_INSTALL_PREFIX}/plugins/platforms/qdirect2d.dll
+    ${QT6_INSTALL_PREFIX}/plugins/platforms/qminimal.dll
+    ${QT6_INSTALL_PREFIX}/plugins/platforms/qoffscreen.dll
+    ${QT6_INSTALL_PREFIX}/plugins/platforms/qwindows.dll
     DESTINATION
     ${Install_Directory}/plugins/platforms
 )
 
 install(
     FILES
-    $ENV{QTDIR}/plugins/styles/qmodernwindowsstyle.dll
+    ${QT6_INSTALL_PREFIX}/plugins/styles/qmodernwindowsstyle.dll
     DESTINATION
     ${Install_Directory}/plugins/styles
 )
